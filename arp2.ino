@@ -7,12 +7,13 @@
 #include "usb_rename.h"  // Rename the USB Device
 // Product name, Manufacturer, serial
 // Any argument can be left off, or NULL to keep the original Arduino name
-USBRename dummy = USBRename("Arp 1", "Intuitive Harmony", "0001");
+USBRename dummy = USBRename("Arp 2", "Intuitive Harmony", "0001");
 
 
 
 //Create an instance of the library with default name, serial port and settings
 MIDI_CREATE_DEFAULT_INSTANCE();
+
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Arp Note (Uses MIDI library calbacks fro the setup)
@@ -64,14 +65,24 @@ public:
     // Example: Change the velocity to a new value
     velocityOut = newVelocity;
   }
+
+  // Getter for the note value
+  byte getNoteRoot() {
+    return noteRoot;
+  }
 };
 
+
+// Held notes settings
+const byte MAX_NOTES = 10;
+ArpNote* notesHeld[MAX_NOTES];  // Array to store MIDI data for held notes to arpeggiate over
+byte notesHeldCount = 0;        // Enables program to check if a note is held
 
 // ~~~~~~~~~~~~~
 // Arduino Setup
 // ~~~~~~~~~~~~~
 void setup() {
-  MIDI.begin(MIDI_CHANNEL_OMNI);  // Initialize the Midi Library.
+  MIDI.begin(MIDI_CHANNEL_OMNI);         // Initialize the Midi Library.
   MIDI.turnThruOff();                    // Turns MIDI through off
   MIDI.setHandleNoteOn(handleNoteOn);    // Set callback for the MIDI DIN handling
   MIDI.setHandleNoteOff(handleNoteOff);  // Set callback for the MIDI DIN handling
@@ -81,18 +92,39 @@ void setup() {
 // Arduino Loop
 // ~~~~~~~~~~~~
 void loop() {
-  MIDI.read(); // Continuously check if Midi data has been received.
+  MIDI.read();  // Continuously check if Midi data has been received.
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// MIDI Input Callback Functions
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// MIDI Input Callback Functions for MIDI Library Handling
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void handleNoteOn(byte channel, byte note, byte velocity) {
-  // add logic for allowing accompaniment this will play the note immediedtly
+  // add logic for allowing accompaniment (or not) this will play the note immediedtly
   MIDI.sendNoteOn(note, velocity, channel);
+
+  // Create a new ArpNote and store its pointer in the notesHeld array
+  if (notesHeldCount < MAX_NOTES) {
+    notesHeld[notesHeldCount] = new ArpNote(channel, note, velocity);
+    // This will come later in the Arp
+    notesHeld[notesHeldCount]->on();
+    notesHeldCount++;
+  }
 }
 
 void handleNoteOff(byte channel, byte note, byte velocity) {
+  // For live accompaniment
   MIDI.sendNoteOff(note, velocity, channel);
+
+  // Find and remove the corresponding ArpNote from the notesHeld array
+  for (byte i = 0; i < notesHeldCount; ++i) {
+    if (notesHeld[i]->getNoteRoot() == note) {
+      // This may only come later in the Arp for now lets leave it for sticky notes potential
+      notesHeld[i]->off();
+      delete notesHeld[i];  // Free memory allocated for ArpNote
+      // Move the last element to the current position to maintain order
+      notesHeld[i] = notesHeld[notesHeldCount - 1];
+      notesHeldCount--;
+      break;
+    }
+  }
 }
