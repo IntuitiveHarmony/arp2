@@ -36,6 +36,9 @@ public:
     noteOut = noteRoot;
     velocityOut = velocityRoot;
   }
+  // Destructor
+  ~ArpNote() {
+  }
 
   // Send the note on to DIN and USB
   void on() {
@@ -78,10 +81,25 @@ const byte MAX_NOTES = 10;
 ArpNote* notesHeld[MAX_NOTES];  // Array to store MIDI data for held notes to arpeggiate over
 byte notesHeldCount = 0;        // Enables program to check if a note is held
 
+// Function to play held notes
+void playArp() {
+  for (byte i = 0; i < notesHeldCount; ++i) {
+    notesHeld[i]->on();
+  }
+}
+
+// Arpeggio settings
+const int heldNotesLED = 8;                  // LED pin for held notes visualization
+const unsigned long arpeggioInterval = 500;  // Time between arpeggio steps in milliseconds
+const int noteProbability = 50;              // Probability of playing a note in the arpeggio sequence (0-100)
+unsigned long lastArpeggioTime = 0;          // Time of the last arpeggio step
+byte arpeggioCounter = 0;                    // Counter for the arpeggio sequence
+
 // ~~~~~~~~~~~~~
 // Arduino Setup
 // ~~~~~~~~~~~~~
 void setup() {
+  pinMode(heldNotesLED, OUTPUT);
   MIDI.begin(MIDI_CHANNEL_OMNI);         // Initialize the Midi Library.
   MIDI.turnThruOff();                    // Turns MIDI through off
   MIDI.setHandleNoteOn(handleNoteOn);    // Set callback for the MIDI DIN handling
@@ -93,6 +111,12 @@ void setup() {
 // ~~~~~~~~~~~~
 void loop() {
   MIDI.read();  // Continuously check if Midi data has been received.
+  if (notesHeldCount > 0) {
+    digitalWrite(heldNotesLED, HIGH);
+    // playArp();  // Play the held notes
+  } else {
+    digitalWrite(heldNotesLED, LOW);
+  }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,7 +130,7 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
   if (notesHeldCount < MAX_NOTES) {
     notesHeld[notesHeldCount] = new ArpNote(channel, note, velocity);
     // This will come later in the Arp
-    notesHeld[notesHeldCount]->on();
+    // notesHeld[notesHeldCount]->on();
     notesHeldCount++;
   }
 }
