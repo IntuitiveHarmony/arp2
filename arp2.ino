@@ -59,21 +59,26 @@ public:
   }
 
   // Methods for manipulation
+  // Transpose the note by a certain number of semitones
   void transpose(int semitones) {
-    // Example: Transpose the note by a certain number of semitones
     noteOut = noteRoot + semitones;
   }
+  // Reset noteOut to the noteRoot
+  void resetNote() {
+    noteOut = noteRoot;
+  }
 
+  // Change the velocity to a new value
   void changeVelocity(byte newVelocity) {
-    // Example: Change the velocity to a new value
     velocityOut = newVelocity;
   }
 
-  // Getter for the note value
+  // Getter for the root note value
   byte getNoteRoot() {
     return noteRoot;
   }
 };
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 // Held notes settings
@@ -123,7 +128,21 @@ void loop() {
   }
 }
 
-// Function to play held notes
+// ~~~~~~~~~~~~~~~~~
+// Utility Functions
+// ~~~~~~~~~~~~~~~~~
+void getPotStates() {
+  int tempoPotValue = analogRead(tempoPin);  // Read the tempo pot value and map it to the arpeggio interval range
+  arpeggioInterval = map(tempoPotValue, 0, 1023, arpeggioIntervalMin, arpeggioIntervalMax);
+
+  int probabilityValue = analogRead(probabilityPin);  // Read the probabilty pot and map it
+  // this doesn't get to 0% or 100% when max an min are set to 0 and 100 :|
+  noteProbability = map(probabilityValue, 0, 1023, -9, 106);
+}
+
+// ~~~~~~~~~~~~~~~~~~
+// Arpeggio Functions
+// ~~~~~~~~~~~~~~~~~~
 void playArp() {
   // Check if it's time for the next arpeggio step
   if (millis() - lastArpeggioTime >= arpeggioInterval) {
@@ -145,14 +164,6 @@ void resetArp() {
   arpeggioCounter = 0;   // Reset the arpeggio counter
 }
 
-void getPotStates() {
-  int tempoPotValue = analogRead(tempoPin);  // Read the tempo pot value and map it to the arpeggio interval range
-  arpeggioInterval = map(tempoPotValue, 0, 1023, arpeggioIntervalMin, arpeggioIntervalMax);
-
-  int probabilityValue = analogRead(probabilityPin);  // Read the probabilty pot and map it
-  // this doesn't get to 0% or 100% when max an min are set to 0 and 100 :|
-  noteProbability = map(probabilityValue, 0, 1023, -9, 106);
-}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // MIDI Input Callback Functions for MIDI Library Handling
