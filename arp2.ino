@@ -145,7 +145,9 @@ void getPotStates() {
   int octaveValue = analogRead(octavePin);  // Read the octave pot and map it
   octaveRange = map(octaveValue, 0, 1023, 0, 4);
   Serial.print("octave. ");
-  Serial.println(octaveRange);
+  Serial.print(octaveRange);
+  Serial.print(" octaveCounter: ");
+  Serial.println(octaveCounter);
 }
 
 // ~~~~~~~~~~~~~~~~~~
@@ -153,7 +155,11 @@ void getPotStates() {
 // ~~~~~~~~~~~~~~~~~~
 void playArp() {
   // Loop over the held notes array
-  for (int i = 0; i <= notesHeldCount; i++) {
+  for (int i = 0; i < notesHeldCount; i++) {
+    Serial.print("i. ");
+    Serial.print(i);
+    Serial.print(" notesHeldCount: ");
+    Serial.println(notesHeldCount - 1);
 
     // Check if it's time for the next arpeggio step
     if (millis() - lastArpeggioTime >= arpeggioInterval) {
@@ -164,18 +170,20 @@ void playArp() {
         notesHeld[arpeggioCounter]->resetNote();
         // Octave Range One
       } else if (octaveRange == 1) {
-        // Root Octave
+        // Root Octave Level
         if (octaveCounter == 0) {
           notesHeld[arpeggioCounter]->resetNote();
-          // Check if at the end off array
-          if (i == notesHeldCount) {
+          // Check if at the end off arp array
+          if (i == notesHeldCount - 1) {
+            // Increment the octave level up
             octaveCounter = 1;
           }
-        // First Octave
+          // First Octave Level
         } else {
           notesHeld[arpeggioCounter]->transpose(12);
-          // Check if at the end off array
-          if (i == notesHeldCount) {
+          // Check if at the end off arp array
+          if (i == notesHeldCount - 1) {
+            // Increment the octave level down
             octaveCounter = 0;
           }
         }
