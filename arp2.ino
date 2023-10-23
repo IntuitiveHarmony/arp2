@@ -9,15 +9,12 @@
 // Any argument can be left off, or NULL to keep the original Arduino name
 USBRename dummy = USBRename(NULL, "Intuitive Harmony", "0001");
 
-
-
 //Create an instance of the library with default name, serial port and settings
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Arp Note (Uses MIDI library calbacks fro the setup)
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Arp Note (Uses MIDI library calbacks from the setup)
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class ArpNote {
 private:
   byte channelRoot;
@@ -99,6 +96,11 @@ int arpeggioCounter = 0;  // Counter for the arpeggio sequence
 const int probabilityPin = A1;  // Pin where the probability potentiometer is connected
 int noteProbability;
 
+// Octave Settings
+const int octavePin = A2;  // Pin where the octave potentiometer is connected
+int octaveRange;
+int octaveCounter;  // keep track of octave range when arp goes over more than the root
+
 
 // ~~~~~~~~~~~~~
 // Arduino Setup
@@ -118,7 +120,7 @@ void setup() {
 // ~~~~~~~~~~~~
 void loop() {
   getPotStates();
-  
+
   MIDI.read();  // Continuously check if Midi data has been received.
   if (notesHeldCount > 0) {
     digitalWrite(heldNotesLED, HIGH);
@@ -139,24 +141,65 @@ void getPotStates() {
   int probabilityValue = analogRead(probabilityPin);  // Read the probabilty pot and map it
   // this doesn't get to 0% or 100% when max an min are set to 0 and 100 :|
   noteProbability = map(probabilityValue, 0, 1023, -9, 106);
+
+  int octaveValue = analogRead(octavePin);  // Read the octave pot and map it
+  octaveRange = map(octaveValue, 0, 1023, 0, 4);
+  Serial.print("octave. ");
+  Serial.print(octaveRange);
+  Serial.print(" octaveCounter: ");
+  Serial.println(octaveCounter);
 }
 
 // ~~~~~~~~~~~~~~~~~~
 // Arpeggio Functions
 // ~~~~~~~~~~~~~~~~~~
 void playArp() {
-  // Check if it's time for the next arpeggio step
-  if (millis() - lastArpeggioTime >= arpeggioInterval) {
-    // Randomly decide whether to play a note based on probability
-    if (random(0, 100) < noteProbability) {
+  // Loop over the held notes array
+  for (int i = 0; i < notesHeldCount; i++) {
+    Serial.print("arpeggioCounter. ");
+    Serial.print(arpeggioCounter);
+    Serial.print(" notesHeldCount: ");
+    Serial.println(notesHeldCount - 1);
+
+    // Check if it's time for the next arpeggio step
+    if (millis() - lastArpeggioTime >= arpeggioInterval) {
+
+      // Transpose the note based on the octaveRange and the octaveCounter
+      // Root octave
+      if (octaveRange == 0) {
+        notesHeld[arpeggioCounter]->resetNote();
+        // Octave Range One
+      } else if (octaveRange == 1) {
+        // Root Octave Level
+        if (octaveCounter == 0) {
+          notesHeld[arpeggioCounter]->resetNote();
+          // Check if at the end off arp array
+          if (arpeggioCounter == notesHeldCount - 1) {
+            // Increment the octave level up
+            octaveCounter = 1;
+          }
+          // First Octave Level
+        } else {
+          notesHeld[arpeggioCounter]->transpose(12);
+          // Check if at the end off arp array
+          if (arpeggioCounter == notesHeldCount - 1) {
+            // Increment the octave level down
+            octaveCounter = 0;
+          }
+        }
+      }
+
+      // Randomly decide whether to play a note based on probability
+      if (random(0, 100) < noteProbability) {
 
 
-      // Play the note in the arpeggio sequence
-      notesHeld[arpeggioCounter]->on();
+        // Play the note in the arpeggio sequence
+        notesHeld[arpeggioCounter]->on();
+      }
+
+      arpeggioCounter = (arpeggioCounter + 1) % notesHeldCount;  // Move to the next note in the arpeggio
+      lastArpeggioTime = millis();                               // Update the last arpeggio time
     }
-
-    arpeggioCounter = (arpeggioCounter + 1) % notesHeldCount;  // Move to the next note in the arpeggio
-    lastArpeggioTime = millis();                               // Update the last arpeggio time
   }
 }
 
@@ -176,8 +219,6 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
   // Create a new ArpNote and store its pointer in the notesHeld array
   if (notesHeldCount < MAX_NOTES) {
     notesHeld[notesHeldCount] = new ArpNote(channel, note, velocity);
-    // This will come later in the Arp
-    // notesHeld[notesHeldCount]->on();
     notesHeldCount++;
   }
 }
@@ -189,8 +230,14 @@ void handleNoteOff(byte channel, byte note, byte velocity) {
   // Find and remove the corresponding ArpNote from the notesHeld array
   for (byte i = 0; i < notesHeldCount; ++i) {
     if (notesHeld[i]->getNoteRoot() == note) {
-      // This may only come later in the Arp for now leave it for sticky notes potential
+      // For sticky Root notes 
+      notesHeld[i]->resetNote();
       notesHeld[i]->off();
+      // For Octave Sticky notes
+      if (octaveRange == 1) {
+        notesHeld[i]->transpose(12);
+        notesHeld[i]->off();
+      }
       delete notesHeld[i];  // Free memory allocated for ArpNote
       // Move the last element to the current position to maintain order
       notesHeld[i] = notesHeld[notesHeldCount - 1];
