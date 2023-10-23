@@ -174,7 +174,7 @@ void playArp() {
         if (octaveCounter == 0) {
           notesHeld[arpeggioCounter]->resetNote();
           // Check if at the end off arp array
-          if (i == notesHeldCount - 1) {
+          if (arpeggioCounter == notesHeldCount - 1) {
             // Increment the octave level up
             octaveCounter = 1;
           }
@@ -182,7 +182,7 @@ void playArp() {
         } else {
           notesHeld[arpeggioCounter]->transpose(12);
           // Check if at the end off arp array
-          if (i == notesHeldCount - 1) {
+          if (arpeggioCounter == notesHeldCount - 1) {
             // Increment the octave level down
             octaveCounter = 0;
           }
