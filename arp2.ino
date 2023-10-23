@@ -156,8 +156,8 @@ void getPotStates() {
 void playArp() {
   // Loop over the held notes array
   for (int i = 0; i < notesHeldCount; i++) {
-    Serial.print("i. ");
-    Serial.print(i);
+    Serial.print("arpeggioCounter. ");
+    Serial.print(arpeggioCounter);
     Serial.print(" notesHeldCount: ");
     Serial.println(notesHeldCount - 1);
 
@@ -230,8 +230,14 @@ void handleNoteOff(byte channel, byte note, byte velocity) {
   // Find and remove the corresponding ArpNote from the notesHeld array
   for (byte i = 0; i < notesHeldCount; ++i) {
     if (notesHeld[i]->getNoteRoot() == note) {
-      // This may only come later in the Arp for now leave it for sticky notes potential
+      // For sticky Root notes 
+      notesHeld[i]->resetNote();
       notesHeld[i]->off();
+      // For Octave Sticky notes
+      if (octaveRange == 1) {
+        notesHeld[i]->transpose(12);
+        notesHeld[i]->off();
+      }
       delete notesHeld[i];  // Free memory allocated for ArpNote
       // Move the last element to the current position to maintain order
       notesHeld[i] = notesHeld[notesHeldCount - 1];
