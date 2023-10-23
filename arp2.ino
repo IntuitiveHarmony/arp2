@@ -7,7 +7,7 @@
 #include "usb_rename.h"  // Rename the USB Device
 // Product name, Manufacturer, serial
 // Any argument can be left off, or NULL to keep the original Arduino name
-USBRename dummy = USBRename("Arp 2", "Intuitive Harmony", "0001");
+USBRename dummy = USBRename(NULL, "Intuitive Harmony", "0001");
 
 
 
@@ -81,25 +81,27 @@ const byte MAX_NOTES = 10;
 ArpNote* notesHeld[MAX_NOTES];  // Array to store MIDI data for held notes to arpeggiate over
 byte notesHeldCount = 0;        // Enables program to check if a note is held
 
-// Function to play held notes
-void playArp() {
-  for (byte i = 0; i < notesHeldCount; ++i) {
-    notesHeld[i]->on();
-  }
-}
-
 // Arpeggio settings
-const int heldNotesLED = 8;                  // LED pin for held notes visualization
-const unsigned long arpeggioInterval = 500;  // Time between arpeggio steps in milliseconds
-const int noteProbability = 50;              // Probability of playing a note in the arpeggio sequence (0-100)
-unsigned long lastArpeggioTime = 0;          // Time of the last arpeggio step
-byte arpeggioCounter = 0;                    // Counter for the arpeggio sequence
+const int heldNotesLED = 8;      // LED pin for held notes visualization
+const int tempoPin = A0;         // Pin where the Tempo potentiometer is connected
+int arpeggioIntervalMin = 5;     // Minimum arpeggio interval (max fast)
+int arpeggioIntervalMax = 1000;  // Maximum arpeggio interval (max slow)
+unsigned long lastArpeggioTime = 0;
+unsigned long arpeggioInterval = 250;
+int arpeggioCounter = 0;  // Counter for the arpeggio sequence
+
+// Probability settings
+const int probabilityPin = A1;  // Pin where the probability potentiometer is connected
+int noteProbability;
+
 
 // ~~~~~~~~~~~~~
 // Arduino Setup
 // ~~~~~~~~~~~~~
 void setup() {
   pinMode(heldNotesLED, OUTPUT);
+  pinMode(tempoPin, INPUT);  // Set Arduino board pin to input
+
   MIDI.begin(MIDI_CHANNEL_OMNI);         // Initialize the Midi Library.
   MIDI.turnThruOff();                    // Turns MIDI through off
   MIDI.setHandleNoteOn(handleNoteOn);    // Set callback for the MIDI DIN handling
@@ -110,13 +112,46 @@ void setup() {
 // Arduino Loop
 // ~~~~~~~~~~~~
 void loop() {
+  getPotStates();
   MIDI.read();  // Continuously check if Midi data has been received.
   if (notesHeldCount > 0) {
     digitalWrite(heldNotesLED, HIGH);
-    // playArp();  // Play the held notes
+    playArp();  // Play the held notes
   } else {
     digitalWrite(heldNotesLED, LOW);
+    resetArp();
   }
+}
+
+// Function to play held notes
+void playArp() {
+  // Check if it's time for the next arpeggio step
+  if (millis() - lastArpeggioTime >= arpeggioInterval) {
+    // Randomly decide whether to play a note based on probability
+    if (random(0, 100) < noteProbability) {
+
+
+      // Play the note in the arpeggio sequence
+      notesHeld[arpeggioCounter]->on();
+    }
+
+    arpeggioCounter = (arpeggioCounter + 1) % notesHeldCount;  // Move to the next note in the arpeggio
+    lastArpeggioTime = millis();                               // Update the last arpeggio time
+  }
+}
+
+void resetArp() {
+  lastArpeggioTime = 0;  // Reset the arpeggio timer
+  arpeggioCounter = 0;   // Reset the arpeggio counter
+}
+
+void getPotStates() {
+  int tempoPotValue = analogRead(tempoPin);  // Read the tempo pot value and map it to the arpeggio interval range
+  arpeggioInterval = map(tempoPotValue, 0, 1023, arpeggioIntervalMin, arpeggioIntervalMax);
+
+  int probabilityValue = analogRead(probabilityPin);  // Read the probabilty pot and map it
+  // this doesn't get to 0% or 100% when max an min are set to 0 and 100 :|
+  noteProbability = map(probabilityValue, 0, 1023, -9, 106);
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
