@@ -84,7 +84,7 @@ public:
 // Held notes settings
 const byte MAX_NOTES = 10;
 ArpNote* notesHeld[MAX_NOTES];  // Array to store MIDI data for held notes to arpeggiate over
-byte notesHeldCount = 0;        // Enables program to check if a note is held
+byte notesHeldCount = 0;        // Enables program to check if a note is held and used as index for the array
 
 // Arpeggio settings
 const int heldNotesLED = 8;      // LED pin for held notes visualization
@@ -118,6 +118,7 @@ void setup() {
 // ~~~~~~~~~~~~
 void loop() {
   getPotStates();
+  
   MIDI.read();  // Continuously check if Midi data has been received.
   if (notesHeldCount > 0) {
     digitalWrite(heldNotesLED, HIGH);
@@ -188,7 +189,7 @@ void handleNoteOff(byte channel, byte note, byte velocity) {
   // Find and remove the corresponding ArpNote from the notesHeld array
   for (byte i = 0; i < notesHeldCount; ++i) {
     if (notesHeld[i]->getNoteRoot() == note) {
-      // This may only come later in the Arp for now lets leave it for sticky notes potential
+      // This may only come later in the Arp for now leave it for sticky notes potential
       notesHeld[i]->off();
       delete notesHeld[i];  // Free memory allocated for ArpNote
       // Move the last element to the current position to maintain order
