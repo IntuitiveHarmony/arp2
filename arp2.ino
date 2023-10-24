@@ -209,6 +209,11 @@ void playArp() {
           }
         }
       }
+
+      // Turn off previous note 
+      if (arpeggioCounter > 0 || (arpeggioCounter > 0 && arpeggioCounter == notesHeldCount - 1)) {
+        notesHeld[arpeggioCounter - 1]->off();
+      }
       // Randomly decide whether to play a note based on probability
       if (random(0, 100) < noteProbability) {
         notesHeld[arpeggioCounter]->on();  // Play the note in the arpeggio sequence
