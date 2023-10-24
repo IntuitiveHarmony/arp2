@@ -144,10 +144,8 @@ void getPotStates() {
 
   int octaveValue = analogRead(octavePin);  // Read the octave pot and map it
   octaveRange = map(octaveValue, 0, 1023, 0, 4);
-  Serial.print("octave. ");
-  Serial.print(octaveRange);
-  Serial.print(" octaveCounter: ");
-  Serial.println(octaveCounter);
+  Serial.print("Ocatve Range: ");
+  Serial.println(octaveRange);
 }
 
 // ~~~~~~~~~~~~~~~~~~
@@ -156,45 +154,64 @@ void getPotStates() {
 void playArp() {
   // Loop over the held notes array
   for (int i = 0; i < notesHeldCount; i++) {
-    Serial.print("arpeggioCounter. ");
-    Serial.print(arpeggioCounter);
-    Serial.print(" notesHeldCount: ");
-    Serial.println(notesHeldCount - 1);
-
     // Check if it's time for the next arpeggio step
     if (millis() - lastArpeggioTime >= arpeggioInterval) {
 
       // Transpose the note based on the octaveRange and the octaveCounter
-      // Root octave
+      // ~~~~~~~~~~~~~~~~~
+      // Octave Range Zero
+      // ~~~~~~~~~~~~~~~~~
       if (octaveRange == 0) {
-        notesHeld[arpeggioCounter]->resetNote();
+        notesHeld[arpeggioCounter]->resetNote();  // Make sure note is at the root
+        // ~~~~~~~~~~~~~~~~
         // Octave Range One
+        // ~~~~~~~~~~~~~~~~
       } else if (octaveRange == 1) {
         // Root Octave Level
         if (octaveCounter == 0) {
-          notesHeld[arpeggioCounter]->resetNote();
+          notesHeld[arpeggioCounter]->resetNote();  // Start or switch note back to the root
           // Check if at the end off arp array
           if (arpeggioCounter == notesHeldCount - 1) {
-            // Increment the octave level up
-            octaveCounter = 1;
+            octaveCounter = 1;  // Increment the octave level up
           }
           // First Octave Level
         } else {
-          notesHeld[arpeggioCounter]->transpose(12);
+          notesHeld[arpeggioCounter]->transpose(12);  // Move the note up an octave
           // Check if at the end off arp array
           if (arpeggioCounter == notesHeldCount - 1) {
-            // Increment the octave level down
-            octaveCounter = 0;
+            octaveCounter = 0;  // Reset the octave level
+          }
+        }
+        // ~~~~~~~~~~~~~~~~
+        // Octave Range Two
+        // ~~~~~~~~~~~~~~~~
+      } else if (octaveRange == 2) {
+        // Root Octave Level
+        if (octaveCounter == 0) {
+          notesHeld[arpeggioCounter]->resetNote();  // Start or switch note back to the root
+          // Check if at the end off arp array
+          if (arpeggioCounter == notesHeldCount - 1) {
+            octaveCounter++;  // Increment the octave level up
+          }
+          // First Octave Level
+        } else if (octaveCounter == 1) {
+          notesHeld[arpeggioCounter]->transpose(12);  // Move the note up an octave
+          // Check if at the end off arp array
+          if (arpeggioCounter == notesHeldCount - 1) {
+            octaveCounter++;  // Increment the octave level up
+          }
+          // Second Octave level
+        } else if (octaveCounter == 2) {
+          notesHeld[arpeggioCounter]->transpose(24);  // Move the note up an octave
+          // Check if at the end off arp array
+          if (arpeggioCounter == notesHeldCount - 1) {
+            octaveCounter = 0;  // Reset the octave level to beginning
           }
         }
       }
-
       // Randomly decide whether to play a note based on probability
       if (random(0, 100) < noteProbability) {
-
-
-        // Play the note in the arpeggio sequence
-        notesHeld[arpeggioCounter]->on();
+        notesHeld[arpeggioCounter]->on();  // Play the note in the arpeggio sequence
       }
 
       arpeggioCounter = (arpeggioCounter + 1) % notesHeldCount;  // Move to the next note in the arpeggio
@@ -230,12 +247,18 @@ void handleNoteOff(byte channel, byte note, byte velocity) {
   // Find and remove the corresponding ArpNote from the notesHeld array
   for (byte i = 0; i < notesHeldCount; ++i) {
     if (notesHeld[i]->getNoteRoot() == note) {
-      // For sticky Root notes 
-      notesHeld[i]->resetNote();
+      // For sticky Root notes
+      // notesHeld[i]->resetNote();
       notesHeld[i]->off();
       // For Octave Sticky notes
       if (octaveRange == 1) {
         notesHeld[i]->transpose(12);
+        notesHeld[i]->off();
+      }
+      if (octaveRange == 2) {
+        notesHeld[i]->transpose(12);
+        notesHeld[i]->off();
+        notesHeld[i]->transpose(24);
         notesHeld[i]->off();
       }
       delete notesHeld[i];  // Free memory allocated for ArpNote
